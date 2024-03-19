@@ -44,10 +44,10 @@ void add(const int* A, const int* B, int* C, std::size_t N, std::size_t M){
 void DACMult(const int* A, const int* B, int* C, std::size_t Na, std::size_t Ma, std::size_t Nb, std::size_t Mb){
     if(std::min(Na, std::min(Ma, std::min(Nb, Mb))) <= DAC_GRAN) parallelMult(A,B,C,Na,Ma,Nb,Mb);
     else {
-        int Nad = Na / 2;
-        int Mad = Ma / 2;
-        int Nbd = Nb / 2;
-        int Mbd = Mb / 2;
+        std::size_t Nad = Na / 2;
+        std::size_t Mad = Ma / 2;
+        std::size_t Nbd = Nb / 2;
+        std::size_t Mbd = Mb / 2;
         
         int* B11 = new int[Nbd * Mbd];
         int* B12 = new int[Nbd * (Mb - Mbd)];
@@ -175,8 +175,8 @@ int main(){
     int* B = new int[N*N];
     int* C = new int[N*N];
     srand(0);
-    for(int i = 0; i < N; i++){
-        for(int j = 0; j < N; j++){
+    for(std::size_t i = 0; i < N; i++){
+        for(std::size_t j = 0; j < N; j++){
             A[i*N + j] = rand() % 10;
             B[i*N + j] = rand() % 10;
         }
