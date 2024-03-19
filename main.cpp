@@ -142,14 +142,6 @@ int main(){
 
     std::vector<double> times(3);
 
-    DACMult(A, B, C, N, N, N, N, 0, 0, 0, 0, 0, 0);
-    for(std::size_t i = 0; i < N; i++){
-        for(std::size_t j = 0; j < N; j++){
-            std::cout << C[i*N + j] << " ";
-        }
-        std::cout << std::endl;
-    }
-
     for(int i = 0; i < 4; i++){
         std::cout << "Round " << i + 1 << std::endl;
         auto start = std::chrono::high_resolution_clock::now();
