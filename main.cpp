@@ -13,9 +13,9 @@ const int DAC_GRAN = 1000;
 using namespace parlay;
 
 void sequentialMult(const int* A, const int* B, int* C, std::size_t Na, std::size_t Ma, std::size_t Nb, std::size_t Mb){
-    for(int i = 0; i < Na; i++){
-        for(int k = 0; k < Ma; k++){
-            for(int j = 0; j < Mb; j++){
+    for(std::size_t i = 0; i < Na; i++){
+        for(std::size_t k = 0; k < Ma; k++){
+            for(std::size_t j = 0; j < Mb; j++){
                 C[i * Mb + j] = A[i * Ma + k] * B[k * Mb + j];
             }
         }
@@ -25,8 +25,8 @@ void sequentialMult(const int* A, const int* B, int* C, std::size_t Na, std::siz
 void parallelMult(const int* A, const int* B, int* C, std::size_t Na, std::size_t Ma, std::size_t Nb, std::size_t Mb){
     if(std::min(Na, std::min(Ma, std::min(Nb, Mb))) <= PAR_GRAN) return sequentialMult(A, B, C, Na, Ma, Nb, Mb);
     parallel_for(0, Na, [&](int i){
-        for(int k = 0; k < Ma; k++){
-            for(int j = 0; j < Mb; j++){
+        for(std::size_t k = 0; k < Ma; k++){
+            for(std::size_t j = 0; j < Mb; j++){
                 C[i * Mb + j] += A[i * Ma + k] * B[k * Mb + j];
             }
         }
@@ -54,23 +54,23 @@ void DACMult(const int* A, const int* B, int* C, std::size_t Na, std::size_t Ma,
         int* B21 = new int[(Nb - Nbd) * Mbd];
         int* B22 = new int[(Nb - Nbd) * (Mb - Mbd)];
 
-        for(int i = 0; i < Nbd; i++){
-            for(int j = 0; j < Mbd; j++){
+        for(std::size_t i = 0; i < Nbd; i++){
+            for(std::size_t j = 0; j < Mbd; j++){
                 B11[i * Mbd + j] = B[i * Mb + j];
             }
         }
-        for(int i = 0; i < Nbd; i++){
-            for(int j = 0; j < Mb - Mbd; j++){
+        for(std::size_t i = 0; i < Nbd; i++){
+            for(std::size_t j = 0; j < Mb - Mbd; j++){
                 B12[i * (Mb - Mbd) + j] = B[i * Mb + (j + Mbd)];
             }
         }
-        for(int i = 0; i < Nb - Nbd; i++){
-            for(int j = 0; j < Mbd; j++){
+        for(std::size_t i = 0; i < Nb - Nbd; i++){
+            for(std::size_t j = 0; j < Mbd; j++){
                 B21[i * Mbd + j] = B[((i + Nbd) * Mb) + j];
             }
         }
-        for(int i = 0; i < Nb - Nbd; i++){
-            for(int j = 0; j < Mb - Mbd; j++){
+        for(std::size_t i = 0; i < Nb - Nbd; i++){
+            for(std::size_t j = 0; j < Mb - Mbd; j++){
                 B22[i * (Mb - Mbd) + j] = B[(i + Nbd) * Mb + (j + Mbd)];
             }
         }
@@ -82,14 +82,14 @@ void DACMult(const int* A, const int* B, int* C, std::size_t Na, std::size_t Ma,
 
         par_do([&](){
             int* A11 = new int[Nad * Mad];
-            for(int i = 0; i < Nad; i++){
-                for(int j = 0; j < Mad; j++){
+            for(std::size_t i = 0; i < Nad; i++){
+                for(std::size_t j = 0; j < Mad; j++){
                     A11[i * Mad + j] = A[i * Ma + j];
                 }
             }
             int* A12 = new int[Nad * (Ma - Mad)];
-            for(int i = 0; i < Nad; i++){
-                for(int j = 0; j < Ma - Mad; j++){
+            for(std::size_t i = 0; i < Nad; i++){
+                for(std::size_t j = 0; j < Ma - Mad; j++){
                     A12[i * (Ma - Mad) + j] = A[i * Ma + (j + Mad)];
                 }
             }
@@ -114,14 +114,14 @@ void DACMult(const int* A, const int* B, int* C, std::size_t Na, std::size_t Ma,
             });
         },[&](){
             int* A21 = new int[(Na - Nad) * Mad];
-            for(int i = 0; i < Na - Nad; i++){
-                for(int j = 0; j < Mad; j++){
+            for(std::size_t i = 0; i < Na - Nad; i++){
+                for(std::size_t j = 0; j < Mad; j++){
                     A21[i * Mad + j] = A[(i + Nad) * Ma + j];
                 }
             }
             int* A22 = new int[(Na - Nad) * (Ma - Mad)];
-            for(int i = 0; i < Na - Nad; i++){
-                for(int j = 0; j < Ma - Mad; j++){
+            for(std::size_t i = 0; i < Na - Nad; i++){
+                for(std::size_t j = 0; j < Ma - Mad; j++){
                     A22[i * (Ma - Mad) + j] = A[(i + Nad) * Ma + (j + Mad)];
                 }
             }
@@ -146,23 +146,23 @@ void DACMult(const int* A, const int* B, int* C, std::size_t Na, std::size_t Ma,
             });
         });
 
-        for(int i = 0; i < Nad; i++){
-            for(int j = 0; j < Mbd; j++){
+        for(std::size_t i = 0; i < Nad; i++){
+            for(std::size_t j = 0; j < Mbd; j++){
                 C[i * Mb + j] = C11[i * Mbd + j];
             }
         }
-        for(int i = 0; i < Nad; i++){
-            for(int j = 0; j < Mb-Mbd; j++){
+        for(std::size_t i = 0; i < Nad; i++){
+            for(std::size_t j = 0; j < Mb-Mbd; j++){
                 C[i * Mb + (j + Mbd)] = C12[i * (Mb-Mbd) + j];
             }
         }
-        for(int i = 0; i < Na - Nad; i++){
-            for(int j = 0; j < Mbd; j++){
+        for(std::size_t i = 0; i < Na - Nad; i++){
+            for(std::size_t j = 0; j < Mbd; j++){
                 C[(i + Nad) * Mb + j] = C21[i * Mbd + j];
             }
         }
-        for(int i = 0; i < Na - Nad; i++){
-            for(int j = 0; j < Mb - Mbd; j++){
+        for(std::size_t i = 0; i < Na - Nad; i++){
+            for(std::size_t j = 0; j < Mb - Mbd; j++){
                 C[(i + Nad) * Mb + (j + Mbd)] = C22[i * (Mb - Mbd) + j];
             }
         }
