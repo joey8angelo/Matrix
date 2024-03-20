@@ -28,8 +28,8 @@ endif
 
 all: main
 
-reduce: main.cpp
-	$(CC) $(CPPFLAGS) main.cpp -o main
+main: main.cpp
+	$(CC) $(CPPFLAGS) main.cpp Matrix.cpp -o main
 
 clean:
 	rm main
