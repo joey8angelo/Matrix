@@ -10,6 +10,7 @@ template<typename P>
 class Matrix{
     public:
     Matrix(int,int);
+    Matrix(int,int,P);
     Matrix(int n, int m, P* d) : N(n), M(m), data(d){} // construct with given data
     ~Matrix();
     std::pair<int,int> shape() const;
@@ -96,13 +97,23 @@ inline Matrix<P> operator*(const Matrix<P>& lhs, const U& rhs){
     return lhs.mult(rhs);
 }
 
-/* Constructor */
+/* Default value Constructor */
 template<typename P>
 Matrix<P>::Matrix(int n, int m) : N(n), M(m){
     if(N <= 0 || M <= 0) throw std::runtime_error("Invalid matrix dimensions: " + strShape());
     data = new P[N * M];
     for(std::size_t i = 0; i < N * M; i++){
         data[i] = P();
+    }
+}
+
+/* Constructor */
+template<typename P>
+Matrix<P>::Matrix(int n, int m, P v) : N(n), M(m){
+    if(N <= 0 || M <= 0) throw std::runtime_error("Invalid matrix dimensions: " + strShape());
+    data = new P[N * M];
+    for(std::size_t i = 0; i < N * M; i++){
+        data[i] = v;
     }
 }
 
