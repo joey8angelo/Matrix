@@ -52,7 +52,7 @@ int main(int argc, char** argv){
         }
     }
 
-    std::cout << "Testing Mult " << tests << " times with seed " << t << std::endl;
+    std::cout << "Testing inner product " << tests << " times with seed " << t << std::endl;
     srand(t);
     for(long int i = 0; i < tests; i++){
         int N = rand() % 3000 + 1;

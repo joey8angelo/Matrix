@@ -23,7 +23,7 @@ int main(){
         std::cout << "Testing size: " << i << std::endl;
         for(int r = 0; r < 3; r++){
             auto start = std::chrono::high_resolution_clock::now();
-            Matrix C = A.mult(B);
+            Matrix C = A.dot(B);
             time += std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count();
         }
         std::cout << "Time: " << time / 3 << std::endl;
