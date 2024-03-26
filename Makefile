@@ -29,7 +29,7 @@ endif
 all: main
 
 main: main.cpp
-	$(CC) $(CPPFLAGS) main.cpp Matrix.cpp -o main
+	$(CC) $(CPPFLAGS) main.cpp -o main
 
 clean:
 	rm main
