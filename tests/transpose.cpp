@@ -13,7 +13,7 @@ std::vector<std::vector<double>> transpose(std::vector<std::vector<double>>& A){
     return C;
 }
 
-void printMatrix(Matrix& A){
+void printMatrix(Matrix<double>& A){
     for(int i = 0; i < A.shape().first; i++){
         for(int j = 0; j < A.shape().second; j++){
             std::cout << A.at(i,j) << " ";
@@ -56,7 +56,7 @@ int main(int argc, char** argv){
         int N = rand() % 3000 + 1;
         int M = rand() % 3000 + 1;
 
-        Matrix A(N,M);
+        Matrix<double> A(N,M);
 
         std::vector<std::vector<double>> Av(N, std::vector<double>(M));
 
@@ -67,7 +67,7 @@ int main(int argc, char** argv){
             }
         }
 
-        Matrix B = A.T();
+        Matrix<double> B = A.T();
         std::vector<std::vector<double>> Bv = transpose(Av);
 
         for(int a = 0; a < M; a++){

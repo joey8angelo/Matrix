@@ -9,8 +9,8 @@ int main(){
     std::vector<int> Ytime;
 
     for(int i = 5; i <= 2000; i+=10){
-        Matrix A(i,i);
-        Matrix B(i,i);
+        Matrix<double> A(i,i);
+        Matrix<double> B(i,i);
         srand(0);
         for(int a = 0; a < i; a++){
             for(int b = 0; b < i; b++){

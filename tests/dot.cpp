@@ -3,7 +3,7 @@
 #include <random>
 #include "../Matrix.h"
 
-std::vector<std::vector<double>> mult(std::vector<std::vector<double>>& A, std::vector<std::vector<double>>& B){
+std::vector<std::vector<double>> dot(std::vector<std::vector<double>>& A, std::vector<std::vector<double>>& B){
     std::vector<std::vector<double>> C(A.size(), std::vector<double>(B[0].size(), 0));
     for(std::size_t i = 0; i < A.size(); i++){
         for(std::size_t k = 0; k < A[0].size(); k++){
@@ -15,7 +15,7 @@ std::vector<std::vector<double>> mult(std::vector<std::vector<double>>& A, std::
     return C;
 }
 
-void printMatrix(Matrix& A){
+void printMatrix(Matrix<double>& A){
     for(int i = 0; i < A.shape().first; i++){
         for(int j = 0; j < A.shape().second; j++){
             std::cout << A.at(i,j) << " ";
@@ -59,8 +59,8 @@ int main(int argc, char** argv){
         int M = rand() % 3000 + 1;
         int K = rand() % 3000 + 1;
 
-        Matrix A(N,M);
-        Matrix B(M,K);
+        Matrix<double> A(N,M);
+        Matrix<double> B(M,K);
 
 
         std::vector<std::vector<double>> Av(N, std::vector<double>(M));
@@ -79,8 +79,8 @@ int main(int argc, char** argv){
             }
         }
 
-        Matrix C = A.mult(B);
-        std::vector<std::vector<double>> Cv = mult(Av, Bv);
+        Matrix<double> C = A.dot(B);
+        std::vector<std::vector<double>> Cv = dot(Av, Bv);
 
         for(int a = 0; a < N; a++){
             for(int b = 0; b < K; b++){

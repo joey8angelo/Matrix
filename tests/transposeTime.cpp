@@ -9,7 +9,7 @@ int main(){
     std::vector<int> Ytime;
 
     for(int i = 5; i <= 2000; i+=10){
-        Matrix A(i,i);
+        Matrix<double> A(i,i);
         srand(0);
         for(int a = 0; a < i; a++){
             for(int b = 0; b < i; b++){
@@ -21,7 +21,7 @@ int main(){
         std::cout << "Testing size: " << i << std::endl;
         for(int r = 0; r < 3; r++){
             auto start = std::chrono::high_resolution_clock::now();
-            Matrix C = A.T();
+            Matrix<double> C = A.T();
             time += std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count();
         }
         std::cout << "Time: " << time / 3 << std::endl;
