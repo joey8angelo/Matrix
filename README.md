@@ -51,19 +51,34 @@ auto F = A * 5;
 auto G = A.add(5);
 auto H = B.sub(5);
 auto I = A.mult(5);
+/*
+D = 6 7  8   E = 0  F = 5  10 15
+    9 10 11      0      20 25 30
+                 0
+*/
 ```
 
 Matrix addition subtraction and multiplication.
 ```c++
-D = A + B;
-E = B - A;
-F = A * B;
-G = A.add(B);
-H = A.sub(B);
-I = B.mult(A);
+D = A + A;
+E = B - B;
+F = A * A;
+G = A.add(A);
+H = B.sub(B);
+I = A.mult(A);
+/*
+D = 2 4  6   E = 0   F = 1  4  9
+    8 10 12      0       16 25 36
+                 0
+*/
 ```
 
 Transpose.
 ```c++
 A = A.T();
+/*
+A = 1 4
+    2 5
+    3 6
+*/
 ```
