@@ -9,13 +9,13 @@ int main(){
     std::vector<int> Ytime;
 
     for(int i = 5; i <= 2000; i+=10){
-        Matrix<double> A(i,i);
-        Matrix<double> B(i,i);
+        Matrix<float> A(i,i);
+        Matrix<float> B(i,i);
         srand(0);
         for(int a = 0; a < i; a++){
             for(int b = 0; b < i; b++){
-                A.at(a,b) = rand() % 10;
-                B.at(a,b) = rand() % 10;
+                A.at(a,b) = rand() % 1000 - 500;
+                B.at(a,b) = rand() % 1000 - 500;
             }
         }
         Xtime.push_back(i);

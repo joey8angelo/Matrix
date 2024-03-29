@@ -3,8 +3,8 @@
 #include <random>
 #include "../Matrix.h"
 
-std::vector<std::vector<double>> transpose(std::vector<std::vector<double>>& A){
-    std::vector<std::vector<double>> C(A[0].size(), std::vector<double>(A.size(), 0));
+std::vector<std::vector<float>> transpose(std::vector<std::vector<float>>& A){
+    std::vector<std::vector<float>> C(A[0].size(), std::vector<float>(A.size(), 0));
     for(std::size_t i = 0; i < A.size(); i++){
         for(std::size_t j = 0; j < A[0].size(); j++){
             C[j][i] = A[i][j];
@@ -13,7 +13,7 @@ std::vector<std::vector<double>> transpose(std::vector<std::vector<double>>& A){
     return C;
 }
 
-void printMatrix(Matrix<double>& A){
+void printMatrix(Matrix<float>& A){
     for(int i = 0; i < A.shape().first; i++){
         for(int j = 0; j < A.shape().second; j++){
             std::cout << A.at(i,j) << " ";
@@ -22,7 +22,7 @@ void printMatrix(Matrix<double>& A){
     }
 }
 
-void printMatrix(std::vector<std::vector<double>>& A){
+void printMatrix(std::vector<std::vector<float>>& A){
     for(std::size_t i = 0; i < A.size(); i++){
         for(std::size_t j = 0; j < A[0].size(); j++){
             std::cout << A[i][j] << " ";
@@ -53,25 +53,25 @@ int main(int argc, char** argv){
     std::cout << "Testing Transpose " << tests << " times with seed " << t << std::endl;
     srand(t);
     for(long int i = 0; i < tests; i++){
-        int N = rand() % 3000 + 1;
         int M = rand() % 3000 + 1;
+        int N = rand() % 3000 + 1;
 
-        Matrix<double> A(N,M);
+        Matrix<float> A(M,N);
 
-        std::vector<std::vector<double>> Av(N, std::vector<double>(M));
+        std::vector<std::vector<float>> Av(M, std::vector<float>(N));
 
-        for(int a = 0; a < N; a++){
-            for(int b = 0; b < M; b++){
-                Av[a][b] = rand() % 10;
+        for(int a = 0; a < M; a++){
+            for(int b = 0; b < N; b++){
+                Av[a][b] = rand() % 1000 - 500;
                 A.at(a,b) = Av[a][b];
             }
         }
 
-        Matrix<double> B = A.T();
-        std::vector<std::vector<double>> Bv = transpose(Av);
+        Matrix<float> B = A.T();
+        std::vector<std::vector<float>> Bv = transpose(Av);
 
-        for(int a = 0; a < M; a++){
-            for(int b = 0; b < N; b++){
+        for(int a = 0; a < N; a++){
+            for(int b = 0; b < M; b++){
                 if(B.at(a,b) != Bv[a][b]){
                     std::cerr << "Test " << i << " failed at position (" << a << "," << b << ")" << std::endl;
                     std::cout << "Matrix" << std::endl;
