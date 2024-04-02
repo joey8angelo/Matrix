@@ -10,12 +10,14 @@ const std::size_t DAC_GRANULAR = 300;
 template<typename P>
 class Matrix{
     public:
-    Matrix() : M(0), N(0), data(nullptr){} // default constructor
+    Matrix() : M(0), N(0) {} // default constructor
     Matrix(std::size_t,std::size_t);
     Matrix(std::size_t,std::size_t,P);
-    Matrix(std::size_t m, std::size_t n, P* d) : M(m), N(n), data(d){} // construct with given data
+    Matrix(std::size_t m, std::size_t n, std::vector<P>& d) : M(m), N(n), data(d){} // construct with given data
+
     ~Matrix();
     std::pair<std::size_t,std::size_t> shape() const;
+    void reshape(std::size_t,std::size_t);
     Matrix<P> dot(const Matrix<P>&) const;
     Matrix<P> add(const Matrix<P>&) const;
     Matrix<P> sub(const Matrix<P>&) const;
@@ -23,9 +25,12 @@ class Matrix{
     Matrix<P> div(const Matrix<P>&) const;
     Matrix<P> log() const;
     Matrix<P> exp() const;
+    Matrix<P> tanh() const;
+    Matrix<P> squishM() const;
+    Matrix<P> squishN() const;
     P sum() const;
     Matrix<P> T() const;
-    P& at(std::size_t,std::size_t) const;
+    P& at(std::size_t,std::size_t);
     template<typename U> Matrix<P> add(const U&) const;
     template<typename U> Matrix<P> sub(const U&) const;
     template<typename U> Matrix<P> subL(const U&) const;
@@ -34,32 +39,22 @@ class Matrix{
     template<typename U> Matrix<P> divL(const U&) const;
 
     std::string strShape() const;
-    void operator=(const Matrix<P>&);
+    bool operator==(const Matrix<P>&);
     private:
     std::size_t M;
     std::size_t N;
-    P* data;
-    void dotDAC(const P*, P*, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t) const;
-    void dotSeq(const P*, P*, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t) const;
-    void TDAC(P*, std::size_t, std::size_t, std::size_t, std::size_t) const;
-    void TSeq(P*, std::size_t, std::size_t, std::size_t, std::size_t) const;
+    std::vector<P> data;
+    void dotDAC(const std::vector<P>&, std::vector<P>&, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t) const;
+    void dotSeq(const std::vector<P>&, std::vector<P>&, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t) const;
+    void TDAC(std::vector<P>&, std::size_t, std::size_t, std::size_t, std::size_t) const;
+    void TSeq(std::vector<P>&, std::size_t, std::size_t, std::size_t, std::size_t) const;
 };
-
-/* Constructor with shape */
-template<typename P>
-Matrix<P>::Matrix(std::size_t m, std::size_t n) : M(m), N(n){
-    if(M <= 0 || N <= 0) throw std::runtime_error("Invalid matrix dimensions: " + strShape());
-    data = new P[M*N];
-    for(std::size_t i = 0; i < M * N; i++){
-        data[i] = P();
-    }
-}
 
 /* Constructor */
 template<typename P>
 Matrix<P>::Matrix(std::size_t m, std::size_t n, P v) : M(m), N(n){
     if(!M || !N) throw std::runtime_error("Invalid matrix dimensions: " + strShape());
-    data = new P[M * N];
+    data = std::vector<P>(M*N);
     for(std::size_t i = 0; i < M * N; i++){
         data[i] = v;
     }
@@ -67,14 +62,30 @@ Matrix<P>::Matrix(std::size_t m, std::size_t n, P v) : M(m), N(n){
 
 /* Destructor */
 template<typename P>
-Matrix<P>::~Matrix(){
-    delete[] data;
+Matrix<P>::~Matrix(){}
+
+/* Constructor with shape */
+template<typename P>
+Matrix<P>::Matrix(std::size_t m, std::size_t n) : M(m), N(n){
+    if(M <= 0 || N <= 0) throw std::runtime_error("Invalid matrix dimensions: " + strShape());
+    data = std::vector<P>(M*N);
+    for(std::size_t i = 0; i < M * N; i++){
+        data[i] = P();
+    }
 }
 
 /* Returns a pair with the number of rows and the number of columns in the matrix */
 template<typename P>
 std::pair<std::size_t,std::size_t> Matrix<P>::shape() const {
     return std::make_pair(M,N);
+}
+
+/* Update M and N if new values are compatible */
+template<typename P>
+void Matrix<P>::reshape(std::size_t m, std::size_t n){
+    if(M*N != m*n) throw std::runtime_error("Incompatible matrix dimensions for reshape: " + strShape() + " (" + std::to_string(m) + "," + std::to_string(n) + ")");
+    M = m;
+    N = n;
 }
 
 /* Returns a string representation of the shape of the matrix: "(N,M)" */
@@ -85,7 +96,7 @@ std::string Matrix<P>::strShape() const {
 
 /* Returns a reference to the position in the matrix at the given coordinates */
 template<typename P>
-P& Matrix<P>::at(std::size_t i, std::size_t j) const {
+P& Matrix<P>::at(std::size_t i, std::size_t j) {
     if(i < 0 || i >= M || j < 0 || j >= N) throw std::runtime_error("Index out of bounds: " + std::to_string(i) + " " + std::to_string(j));
     return data[i * N + j];
 }
@@ -93,60 +104,75 @@ P& Matrix<P>::at(std::size_t i, std::size_t j) const {
 /* Computes the dot product of two matrices, returns a matrix */
 template<typename P>
 Matrix<P> Matrix<P>::dot(const Matrix<P>& B) const {
-    if(N != B.M || data == nullptr || B.data == nullptr) throw std::runtime_error("Incompatible matrix dimensions for dot product: " + strShape() + " " + B.strShape());
+    if(N != B.M) throw std::runtime_error("Incompatible matrix dimensions for dot product: " + strShape() + " " + B.strShape());
     Matrix C(M, B.N);
     dotDAC(B.data, C.data, B.N, M, N, B.M, B.N, 0, 0, 0, 0, 0, 0);
     return C;
 }
 
-/* Element-wise addition of two matrices, returns a matrix */
+/*
+Element-wise addition of two matrices, returns a matrix 
+If the matrices have different dimensions, the smaller matrix is broadcasted to the larger matrix
+*/
 template<typename P>
 Matrix<P> Matrix<P>::add(const Matrix<P>& B) const {
-    if(M != B.M || N != B.N || data == nullptr || B.data == nullptr) throw std::runtime_error("Incompatible matrix dimensions for addition: " + strShape() + " " + B.strShape());
-    P* Cdata = new P[M * N];
-    for(std::size_t i = 0; i < M*N; i++) Cdata[i] = data[i] + B.data[i];
-    return Matrix<P>(M,N,Cdata);
+    if(M != B.M && N != B.N) throw std::runtime_error("Incompatible matrix dimensions for addition: " + strShape() + " " + B.strShape());
+    std::vector<P> Cdata = std::vector<P>(M*N);
+    if(M == B.M && N == B.N)
+        for(std::size_t i = 0; i < M*N; i++) Cdata[i] = data[i] + B.data[i];
+    else
+        for(std::size_t i = 0; i < std::max(M,B.M)*std::max(N,B.N); i++) Cdata[i] = data[i%(M*N)] + B.data[i%(B.M*B.N)];
+    return Matrix<P>(std::max(M,B.M),std::max(N,B.N),Cdata);
 }
 /* Element-wise addition of a scalar, returns a matrix */
 template<typename P>
 template<typename U>
 Matrix<P> Matrix<P>::add(const U& v) const {
-    if(data == nullptr) throw std::runtime_error("Invalid matrix dimensions for addition: " + strShape());
-    P* Cdata = new P[M * N];
+    std::vector<P> Cdata = std::vector<P>(M*N);
     for(std::size_t i = 0; i < M*N; i++) Cdata[i] = data[i] + v;
     return Matrix<P>(M,N,Cdata);
 }
-/* Element-wise multiplication of two matrices, returns a matrix */
+/*
+Element-wise multiplication of two matrices, returns a matrix 
+If the matrices have different dimensions, the smaller matrix is broadcasted to the larger matrix
+*/
 template<typename P>
 Matrix<P> Matrix<P>::mult(const Matrix<P>& B) const {
-    if(M != B.M || N != B.N || data == nullptr || B.data == nullptr) throw std::runtime_error("Incompatible matrix dimensions for multiplication: " + strShape() + " " + B.strShape());
-    P* Cdata = new P[M * N];
-    for(std::size_t i = 0; i < M*N; i++) Cdata[i] = data[i] * B.data[i];
-    return Matrix<P>(M,N,Cdata);
+    if(M != B.M && N != B.N) throw std::runtime_error("Incompatible matrix dimensions for multiplication: " + strShape() + " " + B.strShape());
+    std::vector<P> Cdata = std::vector<P>(M*N);
+    if(M == B.M && N == B.N)
+        for(std::size_t i = 0; i < M*N; i++) Cdata[i] = data[i] * B.data[i];
+    else
+        for(std::size_t i = 0; i < std::max(M,B.M)*std::max(N,B.N); i++) Cdata[i] = data[i%(M*N)] * B.data[i%(B.M*B.N)];
+    return Matrix<P>(std::max(M,B.M),std::max(N,B.N),Cdata);
 }
 /* Element-wise multiplication of a scalar, returns a matrix */
 template<typename P>
 template<typename U>
 Matrix<P> Matrix<P>::mult(const U& v) const {
-    if(data == nullptr) throw std::runtime_error("Invalid matrix dimensions for multiplication: " + strShape());
-    P* Cdata = new P[M * N];
+    std::vector<P> Cdata = std::vector<P>(M*N);
     for(std::size_t i = 0; i < M*N; i++) Cdata[i] = data[i] * v;
     return Matrix<P>(M,N,Cdata);
 }
-/* Element-wise subtraction of two matrices, returns a matrix */
+/*
+Element-wise subtraction of two matrices, returns a matrix 
+If the matrices have different dimensions, the smaller matrix is broadcasted to the larger matrix
+*/
 template<typename P>
 Matrix<P> Matrix<P>::sub(const Matrix<P>& B) const {
-    if(M != B.M || N != B.N || data == nullptr || B.data == nullptr) throw std::runtime_error("Incompatible matrix dimensions for subtraction: " + strShape() + " " + B.strShape());
-    P* Cdata = new P[M * N];
-    for(std::size_t i = 0; i < M*N; i++) Cdata[i] = data[i] - B.data[i];
-    return Matrix<P>(M,N,Cdata);
+    if(M != B.M && N != B.N) throw std::runtime_error("Incompatible matrix dimensions for subtraction: " + strShape() + " " + B.strShape());
+    std::vector<P> Cdata = std::vector<P>(M*N);
+    if(M == B.M && N == B.N)
+        for(std::size_t i = 0; i < M*N; i++) Cdata[i] = data[i] - B.data[i];
+    else
+        for(std::size_t i = 0; i < std::max(M,B.M)*std::max(N,B.N); i++) Cdata[i] = data[i%(M*N)] - B.data[i%(B.M*B.N)];
+    return Matrix<P>(std::max(M,B.M),std::max(N,B.N),Cdata);
 }
 /* Element-wise subtraction of a scalar, returns a matrix */
 template<typename P>
 template<typename U>
 Matrix<P> Matrix<P>::sub(const U& v) const {
-    if(data == nullptr) throw std::runtime_error("Invalid matrix dimensions for subtraction: " + strShape());
-    P* Cdata = new P[M * N];
+    std::vector<P> Cdata = std::vector<P>(M*N);
     for(std::size_t i = 0; i < M*N; i++) Cdata[i] = data[i] - v;
     return Matrix<P>(M,N,Cdata);
 }
@@ -154,25 +180,29 @@ Matrix<P> Matrix<P>::sub(const U& v) const {
 template<typename P>
 template<typename U>
 Matrix<P> Matrix<P>::subL(const U& v) const {
-    if(data == nullptr) throw std::runtime_error("Invalid matrix dimensions for subtraction: " + strShape());
-    P* Cdata = new P[M * N];
+    std::vector<P> Cdata = std::vector<P>(M*N);
     for(std::size_t i = 0; i < M*N; i++) Cdata[i] = v - data[i];
     return Matrix<P>(M,N,Cdata);
 }
-/* Element-wise division of two matrices, returns a matrix */
+/*
+Element-wise division of two matrices, returns a matrix 
+If the matrices have different dimensions, the smaller matrix is broadcasted to the larger matrix
+*/
 template<typename P>
 Matrix<P> Matrix<P>::div(const Matrix<P>& B) const {
-    if(M != B.M || N != B.N || data == nullptr || B.data == nullptr) throw std::runtime_error("Incompatible matrix dimensions for division: " + strShape() + " " + B.strShape());
-    P* Cdata = new P[M * N];
-    for(std::size_t i = 0; i < M*N; i++) Cdata[i] = data[i] / B.data[i];
-    return Matrix<P>(M,N,Cdata);
+    if(M != B.M && N != B.N) throw std::runtime_error("Incompatible matrix dimensions for division: " + strShape() + " " + B.strShape());
+    std::vector<P> Cdata = std::vector<P>(M*N);
+    if(M == B.M && N == B.N)
+        for(std::size_t i = 0; i < M*N; i++) Cdata[i] = data[i] / B.data[i];
+    else
+        for(std::size_t i = 0; i < std::max(M,B.M)*std::max(N,B.N); i++) Cdata[i] = data[i%(M*N)] / B.data[i%(B.M*B.N)];
+    return Matrix<P>(std::max(M,B.M),std::max(N,B.N),Cdata);
 }
 /* Element-wise division of a scalar, returns a matrix */
 template<typename P>
 template<typename U>
 Matrix<P> Matrix<P>::div(const U& v) const {
-    if(data == nullptr) throw std::runtime_error("Invalid matrix dimensions for division: " + strShape());
-    P* Cdata = new P[M * N];
+    std::vector<P> Cdata = std::vector<P>(M*N);
     for(std::size_t i = 0; i < M*N; i++) Cdata[i] = data[i] / v;
     return Matrix<P>(M,N,Cdata);
 }
@@ -180,16 +210,14 @@ Matrix<P> Matrix<P>::div(const U& v) const {
 template<typename P>
 template<typename U>
 Matrix<P> Matrix<P>::divL(const U& v) const {
-    if(data == nullptr) throw std::runtime_error("Invalid matrix dimensions for division: " + strShape());
-    P* Cdata = new P[M * N];
+    std::vector<P> Cdata = std::vector<P>(M*N);
     for(std::size_t i = 0; i < M*N; i++) Cdata[i] = v / data[i];
     return Matrix<P>(M,N,Cdata);
 }
 /* Element-wise logarithm of the matrix, returns a matrix*/
 template<typename P>
 Matrix<P> Matrix<P>::log() const {
-    if(data == nullptr) throw std::runtime_error("Invalid matrix dimensions for log: " + strShape());
-    P* Cdata = new P[M * N];
+    std::vector<P> Cdata = std::vector<P>(M*N);
     for(std::size_t i = 0; i < M*N; i++) Cdata[i] = std::log(data[i]);
     return Matrix<P>(M,N,Cdata);
 }
@@ -203,15 +231,45 @@ P Matrix<P>::sum() const {
 /* Element-wise exponentiation of the matrix, returns a matrix */
 template<typename P>
 Matrix<P> Matrix<P>::exp() const {
-    if(data == nullptr) throw std::runtime_error("Invalid matrix dimensions for exp: " + strShape());
-    P* Cdata = new P[M * N];
+    std::vector<P> Cdata = std::vector<P>(M*N);
     for(std::size_t i = 0; i < M*N; i++) Cdata[i] = std::exp(data[i]);
     return Matrix<P>(M,N,Cdata);
 }
-
-/* Divide and Conquer inner product, allows for parallel execution and better IO efficiency than the basic inner product operation*/
+/* Element-wise tanh of the matrix, returns a matrix */
 template<typename P>
-void Matrix<P>::dotDAC(const P* B, P* C, std::size_t BN, 
+Matrix<P> Matrix<P>::tanh() const {
+    std::vector<P> Cdata = std::vector<P>(M*N);
+    for(std::size_t i = 0; i < M*N; i++) Cdata[i] = std::tanh(data[i]);
+    return Matrix<P>(M,N,Cdata);
+}
+/* Sums up each element of the matrix along the rows, returns a 1xN matrix */
+template<typename P>
+Matrix<P> Matrix<P>::squishM() const {
+    std::vector<P> Cdata = std::vector<P>(N);
+    for(std::size_t j = 0; j < N; j++){
+        Cdata[j] = P();
+        for(std::size_t i = 0; i < M; i++){
+            Cdata[j] += data[i * N + j];
+        }
+    }
+    return Matrix<P>(1,N,Cdata);
+}
+/* Sums up each element of the matrix along the columns, returns an Mx1 matrix */
+template<typename P>
+Matrix<P> Matrix<P>::squishN() const {
+    std::vector<P> Cdata = std::vector<P>(M);
+    for(std::size_t i = 0; i < M; i++){
+        Cdata[i] = P();
+        for(std::size_t j = 0; j < N; j++){
+            Cdata[i] += data[i * N + j];
+        }
+    }
+    return Matrix<P>(M,1,Cdata);
+}
+
+/* Divide and Conquer inner product, allows for parallel execution and better IO efficiency than the basic inner product operation */
+template<typename P>
+void Matrix<P>::dotDAC(const std::vector<P>& B, std::vector<P>& C, std::size_t BN, 
              std::size_t Ma, std::size_t Na, std::size_t Mb, std::size_t Nb, 
              std::size_t PaM, std::size_t PaN, std::size_t PbM, std::size_t PbN, std::size_t PcM, std::size_t PcN) const {
     if(std::min(Ma, std::min(Na, std::min(Mb, Nb))) <= DAC_GRANULAR) {
@@ -285,7 +343,7 @@ void Matrix<P>::dotDAC(const P* B, P* C, std::size_t BN,
 
 /* Basic inner product */
 template<typename P>
-void Matrix<P>::dotSeq(const P* B, P* C, std::size_t BN, 
+void Matrix<P>::dotSeq(const std::vector<P>& B, std::vector<P>& C, std::size_t BN, 
                     std::size_t Ma, std::size_t Na, std::size_t Mb, std::size_t Nb, 
                     std::size_t PaM, std::size_t PaN, std::size_t PbM, std::size_t PbN, std::size_t PcM, std::size_t PcN) const {
     for(std::size_t i = 0; i < Ma; i++){
@@ -300,14 +358,14 @@ void Matrix<P>::dotSeq(const P* B, P* C, std::size_t BN,
 /* Returns the transpose of the matrix */
 template<typename P>
 Matrix<P> Matrix<P>::T() const {
-    P* newData = new P[N * M];
+    std::vector<P> newData = std::vector<P>(M*N);
     TDAC(newData, M, N, 0, 0);
     return Matrix<P>(N,M,newData);
 }
 
-/* Divide and Conquer transpose, allows for parallel execution and better IO efficiency than the basic transpose operation*/
+/* Divide and Conquer transpose, allows for parallel execution and better IO efficiency than the basic transpose operation */
 template<typename P>
-void Matrix<P>::TDAC(P* D, std::size_t M, std::size_t N, std::size_t PM, std::size_t PN) const {
+void Matrix<P>::TDAC(std::vector<P>& D, std::size_t M, std::size_t N, std::size_t PM, std::size_t PN) const {
     if(std::min(M,N) <= DAC_GRANULAR) {
         TSeq(D, M, N, PM, PN);
     }
@@ -344,7 +402,7 @@ void Matrix<P>::TDAC(P* D, std::size_t M, std::size_t N, std::size_t PM, std::si
 
 /* Basic transpose, the data at position i,j is placed into j,i in the new matrix */
 template<typename P>
-void Matrix<P>::TSeq(P* D, std::size_t M, std::size_t N, std::size_t PM, std::size_t PN) const {
+void Matrix<P>::TSeq(std::vector<P>& D, std::size_t M, std::size_t N, std::size_t PM, std::size_t PN) const {
     for(std::size_t i = 0; i < M; i++){
         for(std::size_t j = 0; j < N; j++){
             D[(j+PN) * this->M + (i+PM)] = data[(i+PM) * this->N + (j+PN)];
@@ -352,21 +410,12 @@ void Matrix<P>::TSeq(P* D, std::size_t M, std::size_t N, std::size_t PM, std::si
     }
 }
 
-/* Assignment operator */
+/* Equality operator */
 template<typename P>
-void Matrix<P>::operator=(const Matrix<P>& o){
-    // if number of elements differ, reallocate memory
-    if(M*N != o.M*o.N){
-        delete[] data;
-        data = new P[M * N];
-    }
-    // update size
-    M = o.M;
-    N = o.N;
-    // populate data
-    for(std::size_t i = 0; i < M * N; i++){
-        data[i] = o.data[i];
-    }
+bool Matrix<P>::operator==(const Matrix<P>& rhs){
+    if(M != rhs.M || N != rhs.N) return false;
+    if(data != rhs.data) return false;
+    return true;
 }
 /* Element-wise addition of matrices */
 template<typename P>
