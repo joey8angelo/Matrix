@@ -15,7 +15,7 @@ class Matrix{
     Matrix() : M(0), N(0) {} // default constructor
     Matrix(std::size_t,std::size_t);
     Matrix(std::size_t,std::size_t,P);
-    Matrix(std::size_t m, std::size_t n, std::vector<P>& d) : M(m), N(n), data(d){} // construct with given data
+    Matrix(std::size_t m, std::size_t n, std::vector<P>& d);
     ~Matrix();
     std::pair<std::size_t,std::size_t> shape() const;
     void reshape(std::size_t,std::size_t);
@@ -64,6 +64,13 @@ Matrix<P>::Matrix(std::size_t m, std::size_t n, P v) : M(m), N(n){
     for(std::size_t i = 0; i < M * N; i++){
         data[i] = v;
     }
+}
+
+/* Constructor with data */
+template<typename P>
+Matrix<P>::Matrix(std::size_t m, std::size_t n, std::vector<P>& d) : M(m), N(n), data(d){
+    if(M*N != data.size())
+        throw std::runtime_error("Cannot Construct matrix with shape " + strShape + " and vector of size " data.size());
 }
 
 /* Destructor */
