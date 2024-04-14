@@ -12,6 +12,12 @@ A Matrix can also be defined with a default value.
 Matrix<int> B(3,1,5);
 ```
 
+Or a vector of data that aligns with the demensions.
+```c++
+std::vector<int> data = {1,2,3,4,5,6};
+Matrix<int> C(2,3,data);
+```
+
 The shape of the matrix can be obtained with the shape() method, which returns a pair<int,int>.
 A string representation of the shape is obtained with strShape() method.
 ```c++
@@ -30,6 +36,7 @@ A.at(1,2) = 6;
 /*
 A = 1 2 3
     4 5 6
+A == C
 */
 ```
 
@@ -82,3 +89,8 @@ A = 1 4
     3 6
 */
 ```
+
+And other useful functions, reshape, range access, log, exp, max, argMax.
+
+## Compiling
+Compile with -O3 -march=native on widnows, or use the makeFile, which compiles a main.cpp file by default. 
