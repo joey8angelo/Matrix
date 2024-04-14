@@ -3,6 +3,7 @@
 #include <utility>
 #include <string>
 #include <cmath>
+#include <limits>
 #include "parallel.h"
 
 const std::size_t DAC_GRANULAR = 300;
@@ -14,10 +15,11 @@ class Matrix{
     Matrix(std::size_t,std::size_t);
     Matrix(std::size_t,std::size_t,P);
     Matrix(std::size_t m, std::size_t n, std::vector<P>& d) : M(m), N(n), data(d){} // construct with given data
-
     ~Matrix();
     std::pair<std::size_t,std::size_t> shape() const;
     void reshape(std::size_t,std::size_t);
+    Matrix<P> rRange(std::size_t, std::size_t) const;
+    Matrix<P> cRange(std::size_t, std::size_t) const;
     Matrix<P> dot(const Matrix<P>&) const;
     Matrix<P> add(const Matrix<P>&) const;
     Matrix<P> sub(const Matrix<P>&) const;
@@ -26,18 +28,21 @@ class Matrix{
     Matrix<P> log() const;
     Matrix<P> exp() const;
     Matrix<P> tanh() const;
-    Matrix<P> squishM() const;
-    Matrix<P> squishN() const;
+    std::pair<std::size_t,std::size_t> argMax() const;
+    Matrix<P> argMax(bool) const;
+    P max() const;
+    Matrix<P> max(bool) const;
     P sum() const;
+    Matrix<P> sum(bool) const;
     Matrix<P> T() const;
     P& at(std::size_t,std::size_t);
+    P at(std::size_t, std::size_t) const;
     template<typename U> Matrix<P> add(const U&) const;
     template<typename U> Matrix<P> sub(const U&) const;
     template<typename U> Matrix<P> subL(const U&) const;
     template<typename U> Matrix<P> mult(const U&) const;
     template<typename U> Matrix<P> div(const U&) const;
     template<typename U> Matrix<P> divL(const U&) const;
-
     std::string strShape() const;
     bool operator==(const Matrix<P>&);
     private:
@@ -88,17 +93,50 @@ void Matrix<P>::reshape(std::size_t m, std::size_t n){
     N = n;
 }
 
-/* Returns a string representation of the shape of the matrix: "(N,M)" */
+/* Returns a string representation of the shape of the matrix: "(M,N)" */
 template<typename P>
 std::string Matrix<P>::strShape() const {
     return "(" + std::to_string(M) + "," + std::to_string(N) + ")";
 }
 
-/* Returns a reference to the position in the matrix at the given coordinates */
+/* Returns a reference to the value in the matrix at the given coordinates */
 template<typename P>
 P& Matrix<P>::at(std::size_t i, std::size_t j) {
-    if(i < 0 || i >= M || j < 0 || j >= N) throw std::runtime_error("Index out of bounds: " + std::to_string(i) + " " + std::to_string(j));
     return data[i * N + j];
+}
+
+/* Returns the value in the matrix at the given coordinates */
+template<typename P>
+P Matrix<P>::at(std::size_t i, std::size_t j) const {
+    return data[i * N + j];
+}
+
+/* Returns the submatrix of rows in the given range(non inclusive)*/
+template<typename P>
+Matrix<P> Matrix<P>::rRange(std::size_t from, std::size_t to) const {
+    if(to <= from)
+        return Matrix<P>();
+    std::vector<P> nData((to-from) * N);
+    for(std::size_t i = 0; i < to-from; i++){
+        for(std::size_t j = 0; j < N; j++){
+            nData[i * N + j] = data[(i+from) * N + j];
+        }
+    }
+    return Matrix<P>(to-from, N, nData);
+}
+
+/* Returns the submatrix of columns in the given range(non inclusive)*/
+template<typename P>
+Matrix<P> Matrix<P>::cRange(std::size_t from, std::size_t to) const {
+    if(to <= from)
+        return Matrix<P>();
+    std::vector<P> nData(M * (to-from));
+    for(std::size_t i = 0; i < M; i++){
+        for(std::size_t j = 0; j < (to-from); j++){
+            nData[i * (to-from) + j] = data[i * N + j+from];
+        }
+    }
+    return Matrix<P>(M, to-from, nData);
 }
 
 /* Computes the dot product of two matrices, returns a matrix */
@@ -117,11 +155,17 @@ If the matrices have different dimensions, the smaller matrix is broadcasted to 
 template<typename P>
 Matrix<P> Matrix<P>::add(const Matrix<P>& B) const {
     if(M != B.M && N != B.N) throw std::runtime_error("Incompatible matrix dimensions for addition: " + strShape() + " " + B.strShape());
-    std::vector<P> Cdata = std::vector<P>(M*N);
-    if(M == B.M && N == B.N)
+    if(M == B.M && N == B.N){
+        std::vector<P> Cdata = std::vector<P>(std::max(M,B.M)*std::max(N,B.N));
         for(std::size_t i = 0; i < M*N; i++) Cdata[i] = data[i] + B.data[i];
-    else
-        for(std::size_t i = 0; i < std::max(M,B.M)*std::max(N,B.N); i++) Cdata[i] = data[i%(M*N)] + B.data[i%(B.M*B.N)];
+        return Matrix<P>(M, N, Cdata);
+    }
+    std::vector<P> Cdata = std::vector<P>(std::max(M,B.M)*std::max(N,B.N));
+    for(std::size_t i = 0; i < std::max(M,B.M); i++){
+        for(std::size_t j = 0; j < std::max(N,B.N); j++){
+            Cdata[i * std::max(N,B.N) + j] = data[(i%M) * N + (j%N)] + B.data[(i%B.M) * B.N + (j%B.N)];
+        }
+    }
     return Matrix<P>(std::max(M,B.M),std::max(N,B.N),Cdata);
 }
 /* Element-wise addition of a scalar, returns a matrix */
@@ -139,11 +183,17 @@ If the matrices have different dimensions, the smaller matrix is broadcasted to 
 template<typename P>
 Matrix<P> Matrix<P>::mult(const Matrix<P>& B) const {
     if(M != B.M && N != B.N) throw std::runtime_error("Incompatible matrix dimensions for multiplication: " + strShape() + " " + B.strShape());
-    std::vector<P> Cdata = std::vector<P>(M*N);
-    if(M == B.M && N == B.N)
+    if(M == B.M && N == B.N){
+        std::vector<P> Cdata = std::vector<P>(std::max(M,B.M)*std::max(N,B.N));
         for(std::size_t i = 0; i < M*N; i++) Cdata[i] = data[i] * B.data[i];
-    else
-        for(std::size_t i = 0; i < std::max(M,B.M)*std::max(N,B.N); i++) Cdata[i] = data[i%(M*N)] * B.data[i%(B.M*B.N)];
+        return Matrix<P>(M, N, Cdata);
+    }
+    std::vector<P> Cdata = std::vector<P>(std::max(M,B.M)*std::max(N,B.N));
+    for(std::size_t i = 0; i < std::max(M,B.M); i++){
+        for(std::size_t j = 0; j < std::max(N,B.N); j++){
+            Cdata[i * std::max(N,B.N) + j] = data[(i%M) * N + (j%N)] * B.data[(i%B.M) * B.N + (j%B.N)];
+        }
+    }
     return Matrix<P>(std::max(M,B.M),std::max(N,B.N),Cdata);
 }
 /* Element-wise multiplication of a scalar, returns a matrix */
@@ -161,11 +211,17 @@ If the matrices have different dimensions, the smaller matrix is broadcasted to 
 template<typename P>
 Matrix<P> Matrix<P>::sub(const Matrix<P>& B) const {
     if(M != B.M && N != B.N) throw std::runtime_error("Incompatible matrix dimensions for subtraction: " + strShape() + " " + B.strShape());
-    std::vector<P> Cdata = std::vector<P>(M*N);
-    if(M == B.M && N == B.N)
+    if(M == B.M && N == B.N){
+        std::vector<P> Cdata = std::vector<P>(std::max(M,B.M)*std::max(N,B.N));
         for(std::size_t i = 0; i < M*N; i++) Cdata[i] = data[i] - B.data[i];
-    else
-        for(std::size_t i = 0; i < std::max(M,B.M)*std::max(N,B.N); i++) Cdata[i] = data[i%(M*N)] - B.data[i%(B.M*B.N)];
+        return Matrix<P>(M, N, Cdata);
+    }
+    std::vector<P> Cdata = std::vector<P>(std::max(M,B.M)*std::max(N,B.N));
+    for(std::size_t i = 0; i < std::max(M,B.M); i++){
+        for(std::size_t j = 0; j < std::max(N,B.N); j++){
+            Cdata[i * std::max(N,B.N) + j] = data[(i%M) * N + (j%N)] - B.data[(i%B.M) * B.N + (j%B.N)];
+        }
+    }
     return Matrix<P>(std::max(M,B.M),std::max(N,B.N),Cdata);
 }
 /* Element-wise subtraction of a scalar, returns a matrix */
@@ -191,11 +247,17 @@ If the matrices have different dimensions, the smaller matrix is broadcasted to 
 template<typename P>
 Matrix<P> Matrix<P>::div(const Matrix<P>& B) const {
     if(M != B.M && N != B.N) throw std::runtime_error("Incompatible matrix dimensions for division: " + strShape() + " " + B.strShape());
-    std::vector<P> Cdata = std::vector<P>(M*N);
-    if(M == B.M && N == B.N)
+    if(M == B.M && N == B.N){
+        std::vector<P> Cdata = std::vector<P>(std::max(M,B.M)*std::max(N,B.N));
         for(std::size_t i = 0; i < M*N; i++) Cdata[i] = data[i] / B.data[i];
-    else
-        for(std::size_t i = 0; i < std::max(M,B.M)*std::max(N,B.N); i++) Cdata[i] = data[i%(M*N)] / B.data[i%(B.M*B.N)];
+        return Matrix<P>(M, N, Cdata);
+    }
+    std::vector<P> Cdata = std::vector<P>(std::max(M,B.M)*std::max(N,B.N));
+    for(std::size_t i = 0; i < std::max(M,B.M); i++){
+        for(std::size_t j = 0; j < std::max(N,B.N); j++){
+            Cdata[i * std::max(N,B.N) + j] = data[(i%M) * N + (j%N)] / B.data[(i%B.M) * B.N + (j%B.N)];
+        }
+    }
     return Matrix<P>(std::max(M,B.M),std::max(N,B.N),Cdata);
 }
 /* Element-wise division of a scalar, returns a matrix */
@@ -228,6 +290,25 @@ P Matrix<P>::sum() const {
     for(std::size_t i = 0; i < M*N; i++) s += data[i];
     return s;
 }
+/* Returns a matrix of the sum of each row if 0 and each column if 1 */
+template<typename P>
+Matrix<P> Matrix<P>::sum(bool r) const {
+    std::size_t m = 0;
+    std::size_t n = 0;
+    if(!r)
+        m = M;
+    else
+        n = N;
+    std::vector<P> Cdata(m+n, 0);
+    for(std::size_t i = 0; i < M; i++){
+        for(std::size_t j = 0; j < N; j++){
+            Cdata[i*(!r)+j*r] += data[i*N + j];
+        }
+    }
+    if(m) n = 1;
+    else m = 1;
+    return Matrix<P>(m,n,Cdata);
+}
 /* Element-wise exponentiation of the matrix, returns a matrix */
 template<typename P>
 Matrix<P> Matrix<P>::exp() const {
@@ -235,6 +316,7 @@ Matrix<P> Matrix<P>::exp() const {
     for(std::size_t i = 0; i < M*N; i++) Cdata[i] = std::exp(data[i]);
     return Matrix<P>(M,N,Cdata);
 }
+
 /* Element-wise tanh of the matrix, returns a matrix */
 template<typename P>
 Matrix<P> Matrix<P>::tanh() const {
@@ -242,32 +324,65 @@ Matrix<P> Matrix<P>::tanh() const {
     for(std::size_t i = 0; i < M*N; i++) Cdata[i] = std::tanh(data[i]);
     return Matrix<P>(M,N,Cdata);
 }
-/* Sums up each element of the matrix along the rows, returns a 1xN matrix */
+
+/* Returns the position of the maximum element in the matrix */
 template<typename P>
-Matrix<P> Matrix<P>::squishM() const {
-    std::vector<P> Cdata = std::vector<P>(N);
-    for(std::size_t j = 0; j < N; j++){
-        Cdata[j] = P();
-        for(std::size_t i = 0; i < M; i++){
-            Cdata[j] += data[i * N + j];
-        }
-    }
-    return Matrix<P>(1,N,Cdata);
-}
-/* Sums up each element of the matrix along the columns, returns an Mx1 matrix */
-template<typename P>
-Matrix<P> Matrix<P>::squishN() const {
-    std::vector<P> Cdata = std::vector<P>(M);
+std::pair<std::size_t,std::size_t> Matrix<P>::argMax() const {
+    std::size_t p1 = 0;
+    std::size_t p2 = 0;
     for(std::size_t i = 0; i < M; i++){
-        Cdata[i] = P();
         for(std::size_t j = 0; j < N; j++){
-            Cdata[i] += data[i * N + j];
+            if(data[p1*N+p2] < data[i*N+j]){
+                p1=i;
+                p2=j;
+            }
         }
     }
-    return Matrix<P>(M,1,Cdata);
+    return std::make_pair(p1,p2);
 }
 
-/* Divide and Conquer inner product, allows for parallel execution and better IO efficiency than the basic inner product operation */
+/* Returns the position of the maximum element in each row if 0 and each column if 1 */
+template<typename P>
+Matrix<P> Matrix<P>::argMax(bool r) const {
+    std::size_t m = 0;
+    std::size_t n = 0;
+    if(!r)
+        m = M;
+    else
+        n = N;
+    std::vector<P> Cdata(m+n,0);
+    for(std::size_t i = 0; i < M; i++){
+        for(std::size_t j = 0; j < N; j++){
+            int CdataPosition = i*(!r)+j*r; // position in C constrained to an axis
+            int dataPositionWRTCdata = (i*(!r)+Cdata[CdataPosition]*r) * N + (j*r+Cdata[CdataPosition]*(!r)); // position in data given the data in Cdata constrained to an axis
+            int dataPosition = i*N + j; // current position in the data
+            if(data[dataPositionWRTCdata] < data[dataPosition])
+                Cdata[CdataPosition] = i*r+j*(!r);
+        }
+    }
+    if(m) n = 1;
+    else m = 1;
+    return Matrix<P>(m,n,Cdata);
+}
+
+/* Returns the maximum element in the matrix */
+template<typename P>
+P Matrix<P>::max() const {
+    P m = std::numeric_limits<P>::lowest();
+    for(std::size_t i = 0; i < M*N; i++) m = std::max(m, data[i]);
+    return m;
+}
+
+/* Returns a matrix of the maximum element in each row if 0 and each column if 1 */
+template<typename P>
+Matrix<P> Matrix<P>::max(bool r) const{
+    Matrix<P> vals = argMax(r);
+    for(std::size_t p = 0; p < M*(!r) + N*r; p++)
+        vals.data[p] = data[(vals.data[p]*r+p*(!r))*N+(vals.data[p]*(!r)+p*r)];
+    return vals;
+}
+
+/* Divide and Conquer dot product, allows for parallel execution and better IO efficiency than the basic inner product operation */
 template<typename P>
 void Matrix<P>::dotDAC(const std::vector<P>& B, std::vector<P>& C, std::size_t BN, 
              std::size_t Ma, std::size_t Na, std::size_t Mb, std::size_t Nb, 
@@ -341,7 +456,7 @@ void Matrix<P>::dotDAC(const std::vector<P>& B, std::vector<P>& C, std::size_t B
     }
 }
 
-/* Basic inner product */
+/* Basic dot product */
 template<typename P>
 void Matrix<P>::dotSeq(const std::vector<P>& B, std::vector<P>& C, std::size_t BN, 
                     std::size_t Ma, std::size_t Na, std::size_t Mb, std::size_t Nb, 

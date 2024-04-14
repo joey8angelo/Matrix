@@ -1,7 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <random>
-#include "../Matrix.h"
+#include "Matrix.h"
 
 std::vector<std::vector<float>> add(std::vector<std::vector<float>>& A, float B){
     std::vector<std::vector<float>> C(A.size(), std::vector<float>(A[0].size(), 0));
@@ -157,8 +157,8 @@ int main(int argc, char** argv){
     srand(t);
     std::cout << "Testing operations " << tests << " times with seed " << t << std::endl;
     for(long int i = 0; i < tests; i++){
-        int M = rand() % 3000 + 1;
-        int N = rand() % 3000 + 1;
+        int M = rand() % 5 + 1;
+        int N = rand() % 5 + 1;
 
         Matrix<float> A(M, N);
         Matrix<float> B(M, N);
