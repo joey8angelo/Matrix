@@ -6,7 +6,8 @@
 #include <limits>
 #include "parallel.h"
 
-const std::size_t DAC_GRANULAR = 300;
+const std::size_t GRANULARITY = 30000;
+// const std::size_t GRANULARITY = 300;
 
 template<typename P>
 class Matrix{
@@ -387,7 +388,8 @@ template<typename P>
 void Matrix<P>::dotDAC(const std::vector<P>& B, std::vector<P>& C, std::size_t BN, 
              std::size_t Ma, std::size_t Na, std::size_t Mb, std::size_t Nb, 
              std::size_t PaM, std::size_t PaN, std::size_t PbM, std::size_t PbN, std::size_t PcM, std::size_t PcN) const {
-    if(std::min(Ma, std::min(Na, std::min(Mb, Nb))) <= DAC_GRANULAR) {
+    if(Ma*Na <= GRANULARITY || Mb*Nb <= GRANULARITY) {
+    // if(std::min(std::min(Ma, Na), std::min(Mb, Nb)) <= GRANULARITY){
         dotSeq(B,C,BN,Ma,Na,Mb,Nb,PaM,PaN,PbM,PbN,PcM,PcN);
     }
     else {
@@ -481,7 +483,8 @@ Matrix<P> Matrix<P>::T() const {
 /* Divide and Conquer transpose, allows for parallel execution and better IO efficiency than the basic transpose operation */
 template<typename P>
 void Matrix<P>::TDAC(std::vector<P>& D, std::size_t M, std::size_t N, std::size_t PM, std::size_t PN) const {
-    if(std::min(M,N) <= DAC_GRANULAR) {
+    if(M*N <= GRANULARITY) {
+    // if(std::min(M,N) <= GRANULARITY){
         TSeq(D, M, N, PM, PN);
     }
     else {
