@@ -70,7 +70,7 @@ Matrix<P>::Matrix(std::size_t m, std::size_t n, P v) : M(m), N(n){
 template<typename P>
 Matrix<P>::Matrix(std::size_t m, std::size_t n, std::vector<P>& d) : M(m), N(n), data(d){
     if(M*N != data.size())
-        throw std::runtime_error("Cannot Construct matrix with shape " + strShape + " and vector of size " data.size());
+        throw std::runtime_error("Cannot Construct matrix with shape " + strShape() + " and vector of size " + std::to_string(data.size()));
 }
 
 /* Destructor */
